@@ -1,6 +1,6 @@
 from flask_security import auth_required, current_user, hash_password
 from flask_restful import Resource, reqparse, fields, marshal_with
-from flask import jsonify, request
+from flask import jsonify, request, current_app
 from datetime import datetime
 import os
 import matplotlib.pyplot as plt
@@ -9,10 +9,7 @@ from cache import cache
 import cachingdata
 from werkzeug.datastructures import FileStorage
 from bson import ObjectId
-from flask import current_app
 from itsdangerous import URLSafeTimedSerializer
-from app import api  # Import `api` from `app.py`
-
 
 # Directories for uploads
 UPLOAD_BLOG = "../frontend/src/assets/blogs"
@@ -36,12 +33,12 @@ class UsersAPI(Resource):
         """
         Get user information along with blogs from followed users.
         """
-        user_collection = mongo.db.users
-        follow_collection = mongo.db.follows
-        blog_collection = mongo.db.blogs
-        like_collection = mongo.db.likes
-        dislike_collection = mongo.db.dislikes
-        comment_collection = mongo.db.comments
+        user_collection = current_app.mongo.db.users
+        follow_collection = current_app.mongo.db.follows
+        blog_collection = current_app.mongo.db.blogs
+        like_collection = current_app.mongo.db.likes
+        dislike_collection = current_app.mongo.db.dislikes
+        comment_collection = current_app.mongo.db.comments
 
         # Fetch current user details
         chk = user_collection.find_one({'_id': ObjectId(current_user.id)})
@@ -83,7 +80,7 @@ class UsersAPI(Resource):
                     "dislikes": dl,
                     "comments": cmnt,
                 })
-        
+
         return {
             "blogs": blogs,
             "email": chk['email'],
@@ -103,7 +100,7 @@ class UsersAPI(Resource):
         user_name = args.get("username")
         passw = args.get("password1")
 
-        user_collection = mongo.db.users
+        user_collection = current_app.mongo.db.users
 
         # Check if user already exists
         check_email = user_collection.find_one({'email': email})
@@ -144,7 +141,7 @@ class UsersAPI(Resource):
             about = request.form.get("about")
             profile_pic = request.files.get("profile_pic")
 
-            user_collection = mongo.db.users
+            user_collection = current_app.mongo.db.users
 
             imgname = "no-profile-pic.jpeg"
             if profile_pic:
@@ -170,12 +167,12 @@ class UsersAPI(Resource):
         Delete the current user's account and related data.
         """
         try:
-            user_collection = mongo.db.users
-            blog_collection = mongo.db.blogs
-            comment_collection = mongo.db.comments
-            like_collection = mongo.db.likes
-            dislike_collection = mongo.db.dislikes
-            follow_collection = mongo.db.follows
+            user_collection = current_app.mongo.db.users
+            blog_collection = current_app.mongo.db.blogs
+            comment_collection = current_app.mongo.db.comments
+            like_collection = current_app.mongo.db.likes
+            dislike_collection = current_app.mongo.db.dislikes
+            follow_collection = current_app.mongo.db.follows
 
             user_id = ObjectId(current_user.id)
 
@@ -216,10 +213,10 @@ class BlogAPI(Resource):
         """
         Retrieve a specific blog post along with engagement statistics.
         """
-        blog_collection = mongo.db.blogs
-        like_collection = mongo.db.likes
-        dislike_collection = mongo.db.dislikes
-        comment_collection = mongo.db.comments
+        blog_collection = current_app.mongo.db.blogs
+        like_collection = current_app.mongo.db.likes
+        dislike_collection = current_app.mongo.db.dislikes
+        comment_collection = current_app.mongo.db.comments
 
         # Fetch the blog
         blg = blog_collection.find_one({'_id': ObjectId(id)})
@@ -251,7 +248,7 @@ class BlogAPI(Resource):
         """
         Create a new blog post.
         """
-        blog_collection = mongo.db.blogs
+        blog_collection = current_app.mongo.db.blogs
         args = blog_req_args.parse_args()
         try:
             blog_title = args["blogTitle"]
@@ -284,7 +281,7 @@ class BlogAPI(Resource):
         """
         Update an existing blog post.
         """
-        blog_collection = mongo.db.blogs
+        blog_collection = current_app.mongo.db.blogs
         args = blog_req_args.parse_args()
         try:
             title = args["blogTitle"]
@@ -318,10 +315,10 @@ class BlogAPI(Resource):
         """
         Delete a blog post along with related likes, dislikes, and comments.
         """
-        blog_collection = mongo.db.blogs
-        like_collection = mongo.db.likes
-        dislike_collection = mongo.db.dislikes
-        comment_collection = mongo.db.comments
+        blog_collection = current_app.mongo.db.blogs
+        like_collection = current_app.mongo.db.likes
+        dislike_collection = current_app.mongo.db.dislikes
+        comment_collection = current_app.mongo.db.comments
 
         try:
             blog_id = ObjectId(id)
@@ -355,6 +352,9 @@ class VerifyTokenAPI(Resource):
             return jsonify({"valid": True}), 200
         except Exception:
             return jsonify({"valid": False, "error": "Invalid or expired token."}), 401
+
+# Add all routes in `app.py`
+# Do not add `api.add_resource` in `api.py` to avoid circular imports
 
 # Add all routes
 api.add_resource(UsersAPI, "/api/user")

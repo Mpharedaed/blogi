@@ -4,13 +4,13 @@ from flask import Flask, send_from_directory, request, jsonify
 from flask_pymongo import PyMongo
 from flask_security import Security
 from flask_restful import Api, Resource
-from flask_login import LoginManager, login_user
+from flask_login import LoginManager, login_user, UserMixin
 from flask_cors import CORS
 from celery import Celery
 from celery.schedules import crontab
 from werkzeug.security import generate_password_hash, check_password_hash
 
-# Import API resources
+# Import API resources from `api.py`
 from api import (
     UsersAPI,
     BlogAPI,
@@ -21,7 +21,9 @@ from api import (
     LikeUnlikeAPI,
     CommentAPI,
     ExportblogAPI,
+    VerifyTokenAPI  # Add the token verification API here as well
 )
+
 
 # Import cache and tasks
 from cache import cache
@@ -31,7 +33,7 @@ from tasks import daily_reminder, monthly_reminder
 app = Flask(__name__, static_folder="../frontend/dist", static_url_path="")
 
 # Initialize the RESTful API
-api = Api(app)  # <--- Create an instance of `Api`
+api = Api(app)
 
 # Initialize the LoginManager
 login_manager = LoginManager()
@@ -45,9 +47,9 @@ CORS(app, origins=[
 ])
 
 # MongoDB configuration
-app.config["MONGO_URI"] = os.environ.get("MONGO_URI", "mongodb+srv://mohamedredaed:<red88luck>@cluster.mongodb.net/?retryWrites=true&w=majority")
-app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY")
-app.config["SECURITY_PASSWORD_SALT"] = os.environ.get("SECURITY_PASSWORD_SALT")
+app.config["MONGO_URI"] = os.environ.get("mongodb+srv://mohamedredaed:red88luck@blogicluster0.ch75d.mongodb.net/?retryWrites=true&w=majority&appName=blogiCluster0")
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "your_secret_key")
+app.config["SECURITY_PASSWORD_SALT"] = os.environ.get("SECURITY_PASSWORD_SALT", "your_password_salt")
 app.config["SECURITY_USERNAME_ENABLE"] = True
 app.config["WTF_CSRF_ENABLED"] = False
 app.config["SECURITY_TOKEN_AUTHENTICATION_HEADER"] = "Authentication-Token"
@@ -63,7 +65,6 @@ app.config["CACHE_TYPE"] = "RedisCache"
 app.config["CACHE_DEFAULT_TIMEOUT"] = 100
 
 # Initialize Flask extensions
-api = Api(app)
 cache.init_app(app)
 
 # Initialize MongoDB with PyMongo
@@ -92,6 +93,21 @@ class UserDatastore:
 user_datastore = UserDatastore(mongo)
 security = Security(app, user_datastore)
 
+# Define a MongoDB-compatible user class for Flask-Login
+class MongoUser(UserMixin):
+    def __init__(self, user_data):
+        self.id = str(user_data["_id"])
+        self.username = user_data["username"]
+        self.email = user_data["email"]
+
+# Load the user using Flask-Login
+@login_manager.user_loader
+def load_user(user_id):
+    user_data = mongo.db.users.find_one({"_id": ObjectId(user_id)})
+    if user_data:
+        return MongoUser(user_data)
+    return None
+
 # Define the LoginAPI resource
 class LoginAPI(Resource):
     def post(self):
@@ -103,16 +119,18 @@ class LoginAPI(Resource):
         user = mongo.db.users.find_one({'username': username})
 
         if user and check_password_hash(user['password'], password):  # Use hashed passwords
-            login_user(user)  # This function remains the same from Flask-Login
+            user_obj = MongoUser(user)
+            login_user(user_obj)  # Use the MongoUser for login
             token = user.get('auth_token', 'some_generated_token')  # Generate or retrieve token
             return {"message": "Login successful", "token": token}, 200
         else:
             return {"message": "Invalid username or password"}, 401
 
 # API resource setup
+# API resource setup: Here you add all your resource routes
 api.add_resource(UsersAPI, "/api/user")
 api.add_resource(LoginAPI, "/api/login")
-api.add_resource(BlogAPI, "/api/blog", "/api/blog/<int:id>")
+api.add_resource(BlogAPI, "/api/blog", "/api/blog/<string:id>")
 api.add_resource(ProfileAPI, "/api/profile/<string:username>")
 api.add_resource(SearchAPI, "/api/search")
 api.add_resource(FollowAPI, "/api/follow")
@@ -120,13 +138,15 @@ api.add_resource(UnfollowAPI, "/api/unfollow")
 api.add_resource(LikeUnlikeAPI, "/api/likeunlike")
 api.add_resource(CommentAPI, "/api/comment/<int:id>")
 api.add_resource(ExportblogAPI, "/api/exportblogs")
+api.add_resource(VerifyTokenAPI, "/api/verify-token")  # Token verification route added here
+
 
 # Serve Vue.js frontend
 @app.route("/")
 @app.route("/<path:filename>")
 def serve_frontend(filename=""):
     if filename != "" and os.path.exists(f"../frontend/dist/{filename}"):
-        return send_from_directory("../frontend/dist", filename) 
+        return send_from_directory("../frontend/dist", filename)
     else:
         return send_from_directory("../frontend/dist", "index.html")
 
