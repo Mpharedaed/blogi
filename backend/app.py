@@ -30,6 +30,9 @@ from tasks import daily_reminder, monthly_reminder
 # Flask app setup
 app = Flask(__name__, static_folder="../frontend/dist", static_url_path="")
 
+# Initialize the RESTful API
+api = Api(app)  # <--- Create an instance of `Api`
+
 # Initialize the LoginManager
 login_manager = LoginManager()
 login_manager.init_app(app)

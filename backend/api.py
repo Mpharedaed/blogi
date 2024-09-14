@@ -11,6 +11,8 @@ from werkzeug.datastructures import FileStorage
 from bson import ObjectId
 from flask import current_app
 from itsdangerous import URLSafeTimedSerializer
+from app import api  # Import `api` from `app.py`
+
 
 # Directories for uploads
 UPLOAD_BLOG = "../frontend/src/assets/blogs"
