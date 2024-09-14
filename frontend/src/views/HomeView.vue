@@ -96,7 +96,7 @@ export default {
     // Fetch blogs from the API
     console.log("Fetching blogs from API...");
     try {
-      const response = await fetch("https://blogi-36jo.onrender.com/api/user", {
+      const response = await fetch("https://www.dawlatemad.com/api/user", {
         method: "GET",
         mode: "cors",
         headers: {
@@ -139,7 +139,7 @@ export default {
       console.log("Liking blog ID:", blogId);
       try {
         const res = await fetch(
-          `https://blogi-36jo.onrender.com/api/likeunlike`,
+          `https://www.dawlatemad.com/api/likeunlike`,
           {
             method: "POST",
             headers: {
@@ -172,7 +172,7 @@ export default {
       console.log("Unliking blog ID:", blogId);
       try {
         const res = await fetch(
-          `https://blogi-36jo.onrender.com/api/likeunlike`,
+          `https://www.dawlatemad.com/api/likeunlike`,
           {
             method: "POST",
             headers: {

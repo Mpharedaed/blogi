@@ -80,7 +80,7 @@ export default {
         )
       ) {
         try {
-          const res = await fetch("https://blogi-36jo.onrender.com/api/user", {
+          const res = await fetch("https://www.dawlatemad.com/api/user", {
             mode: "cors",
             method: "POST",
             headers: {
@@ -149,7 +149,7 @@ export default {
       this.loginData.error_2 = null;
       this.loginData.error_1 = null;
       try {
-        fetch("https://blogi-36jo.onrender.com/login?include_auth_token", {
+        fetch("https://www.dawlatemad.com/login?include_auth_token", {
           mode: "cors",
           method: "POST",
           headers: {
