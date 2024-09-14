@@ -93,7 +93,7 @@ export default {
     // Fetch blogs from the API
     console.log("Fetching blogs from API...");
     try {
-      const response = await axios.get("https://www.dawlatemad.com/api/blogs", {
+      const response = await axios.get("https://www.dawlatemad.com/api/blog", {
         headers: {
           "Authentication-Token": this.authToken,
         },
@@ -137,7 +137,7 @@ export default {
       console.log("Liking blog ID:", blogId);
       try {
         const res = await axios.post(
-          `https://www.dawlatemad.com/api/likeunlike`,
+          `https://www.dawlatemad.com/api/LikeUnlikeAPI`,
           {
             like: true,
             blog: blogId,
@@ -168,7 +168,7 @@ export default {
       console.log("Unliking blog ID:", blogId);
       try {
         const res = await axios.post(
-          `https://www.dawlatemad.com/api/likeunlike`,
+          `https://www.dawlatemad.com/api/LikeUnlikeAPI`,
           {
             like: false,
             blog: blogId,
@@ -198,7 +198,7 @@ export default {
     async refreshBlogs() {
       // Fetch the blogs again to update the likes/dislikes counts
       try {
-        const response = await axios.get("https://www.dawlatemad.com/api/blogs", {
+        const response = await axios.get("https://www.dawlatemad.com/api/blog", {
           headers: {
             "Authentication-Token": this.authToken,
           },
