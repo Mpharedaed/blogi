@@ -150,7 +150,7 @@ export default {
         return;
       }
       try {
-        await axios.post("https://yourapi.com/api/user", {
+        await axios.post("https://blogi-36jo.onrender.com/api/user", {
           email: this.signupData.email,
           username: this.signupData.username,
           password1: this.signupData.password1,
@@ -165,7 +165,7 @@ export default {
     // Login Function
     async login() {
       try {
-        const response = await axios.post("https://yourapi.com/api/login", {
+        const response = await axios.post("https://blogi-36jo.onrender.com/api/login", {
           username: this.loginData.username,
           password: this.loginData.password,
         });
