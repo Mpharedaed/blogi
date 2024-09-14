@@ -33,20 +33,7 @@
           aria-label="Close"
         ></button>
       </p>
-      <p class="alert alert-danger alert-dismissible fade show" v-if="lerror_2">
-        {{ lerror_2 }}
-        <button
-          type="button"
-          class="btn-close"
-          data-bs-dismiss="alert"
-          aria-label="Close"
-        ></button>
-      </p>
-      <p
-        class="alert alert-success alert-dismissible fade show"
-        role="alert"
-        v-if="success"
-      >
+      <p class="alert alert-success alert-dismissible fade show" v-if="success">
         {{ success }}
         <button
           type="button"
@@ -163,7 +150,7 @@ export default {
         return;
       }
       try {
-        await axios.post("https://blogi-36jo.onrender.com/api/user", {
+        await axios.post("https://yourapi.com/api/user", {
           email: this.signupData.email,
           username: this.signupData.username,
           password1: this.signupData.password1,
@@ -178,23 +165,14 @@ export default {
     // Login Function
     async login() {
       try {
-        const response = await axios.post(
-          "https://blogi-36jo.onrender.com/api/login",
-          {
-            username: this.loginData.username,
-            password: this.loginData.password,
-          }
-        );
-        // If login is successful
+        const response = await axios.post("https://yourapi.com/api/login", {
+          username: this.loginData.username,
+          password: this.loginData.password,
+        });
         this.success = "Login successful!";
-
-        // Store the token in sessionStorage for future API requests
         sessionStorage.setItem("authToken", response.data.token);
-
-        // Redirect to the home page or another route
-        this.$router.push("/home");
+        this.$router.push("/home");  // Redirect to /home after login
       } catch (error) {
-        // Handle login errors
         this.lerror_1 = error.response?.data?.message || "Login failed!";
       }
     },
@@ -209,6 +187,7 @@ export default {
   },
 };
 </script>
+
 
 
 
