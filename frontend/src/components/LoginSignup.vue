@@ -62,7 +62,7 @@
 
       <!-- SIGNUP PAGE -->
       <div class="signup">
-        <form ref="sigform" method="Post">
+        <form ref="sigform" method="post">
           <label class="lb" for="ck" aria-hidden="true">Sign up</label>
           <input
             class="out"
@@ -101,33 +101,35 @@
           </button>
         </form>
       </div>
-<template>
-  <!-- LOGIN PAGE -->
-  <div class="login">
-    <form method="Post">
-      <label class="lb" for="ck" aria-hidden="true">Login</label>
-      <input
-        class="out"
-        type="text"
-        v-model="loginData.username"
-        placeholder="Enter your Username"
-        required
-      />
-      <input
-        class="out"
-        type="password"
-        v-model="loginData.password"
-        placeholder="Password"
-        required
-      />
-      <button
-        type="submit"
-        class="tk"
-        @click.prevent="login"
-      >
-        Login
-      </button>
-    </form>
+
+      <!-- LOGIN PAGE -->
+      <div class="login">
+        <form method="post">
+          <label class="lb" for="ck" aria-hidden="true">Login</label>
+          <input
+            class="out"
+            type="text"
+            v-model="loginData.username"
+            placeholder="Enter your Username"
+            required
+          />
+          <input
+            class="out"
+            type="password"
+            v-model="loginData.password"
+            placeholder="Password"
+            required
+          />
+          <button
+            type="submit"
+            class="tk"
+            @click.prevent="login"
+          >
+            Login
+          </button>
+        </form>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -139,20 +141,18 @@ export default {
   data() {
     return {
       signupData: {
-        email: null,
-        username: null,
-        password1: null,
-        password2: null,
+        email: "",
+        username: "",
+        password1: "",
+        password2: "",
       },
       loginData: {
-        username: null,
-        password: null,
+        username: "",
+        password: "",
       },
       serror_1: "",
-      serror_2: "",
-      lerror_1: "",
-      lerror_2: "",
       success: "",
+      lerror_1: "",
     };
   },
   methods: {
@@ -171,7 +171,7 @@ export default {
         this.success = "Signup successful!";
         this.resetForm();
       } catch (error) {
-        this.serror_1 = error.response?.data || "An error occurred!";
+        this.serror_1 = error.response?.data?.message || "An error occurred!";
       }
     },
 
@@ -187,13 +187,12 @@ export default {
         );
         // If login is successful
         this.success = "Login successful!";
-        
+
         // Store the token in sessionStorage for future API requests
         sessionStorage.setItem("authToken", response.data.token);
 
         // Redirect to the home page or another route
         this.$router.push("/home");
-
       } catch (error) {
         // Handle login errors
         this.lerror_1 = error.response?.data?.message || "Login failed!";
@@ -202,14 +201,16 @@ export default {
 
     // Reset Form after Signup
     resetForm() {
-      this.signupData.email = null;
-      this.signupData.username = null;
-      this.signupData.password1 = null;
-      this.signupData.password2 = null;
+      this.signupData.email = "";
+      this.signupData.username = "";
+      this.signupData.password1 = "";
+      this.signupData.password2 = "";
     },
   },
 };
 </script>
+
+
 
 <style scoped>
 .bd {
