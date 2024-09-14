@@ -9,7 +9,7 @@ function requireAuth(to, from, next) {
   if (token) {
     // Optionally, you can make a request to validate the token with the backend
     axios
-      .post("https://your-backend-url.com/api/verify-token", { token })
+      .post("https://blogi-36jo.onrender.com/api/verify-token", { token })
       .then(() => {
         next(); // Continue to the route if the token is valid
       })
