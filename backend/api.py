@@ -9,6 +9,8 @@ from cache import cache
 import cachingdata
 from werkzeug.datastructures import FileStorage
 from bson import ObjectId
+from flask import current_app
+from itsdangerous import URLSafeTimedSerializer
 
 # Directories for uploads
 UPLOAD_BLOG = "../frontend/src/assets/blogs"
@@ -334,3 +336,25 @@ class BlogAPI(Resource):
         except Exception as e:
             print(e)
             return {"error": "Failed to delete blog"}, 500
+
+# Token Verification Route for the Frontend to call
+class VerifyTokenAPI(Resource):
+    def get(self):
+        # Get the token from the Authorization header
+        auth_header = request.headers.get('Authorization')
+        if not auth_header:
+            return jsonify({"error": "Authorization header is missing."}), 401
+        token = auth_header.split(" ")[1]  # Remove 'Bearer' prefix
+
+        try:
+            # Decode the token
+            s = URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
+            data = s.loads(token, max_age=current_app.config.get('SECURITY_TOKEN_MAX_AGE', 3600))
+            return jsonify({"valid": True}), 200
+        except Exception:
+            return jsonify({"valid": False, "error": "Invalid or expired token."}), 401
+
+# Add all routes
+api.add_resource(UsersAPI, "/api/user")
+api.add_resource(BlogAPI, "/api/blog", "/api/blog/<string:id>")
+api.add_resource(VerifyTokenAPI, "/api/verify-token")

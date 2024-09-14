@@ -70,12 +70,7 @@
             placeholder="Confirm Password*"
             required
           />
-          <button
-            type="submit"
-            class="tk"
-          >
-            Sign up
-          </button>
+          <button type="submit" class="tk">Sign up</button>
         </form>
       </div>
 
@@ -97,12 +92,7 @@
             placeholder="Password"
             required
           />
-          <button
-            type="submit"
-            class="tk"
-          >
-            Login
-          </button>
+          <button type="submit" class="tk">Login</button>
         </form>
       </div>
     </div>
@@ -126,9 +116,9 @@ export default {
         username: "",
         password: "",
       },
-      serror_1: "",
-      success: "",
-      lerror_1: "",
+      serror_1: "", // Signup error
+      lerror_1: "", // Login error
+      success: "", // Success message
     };
   },
   methods: {
@@ -166,20 +156,36 @@ export default {
       }
     },
 
-    // Login Function
+    // Login Function with Token Validation
     async login() {
       this.lerror_1 = "";  // Reset error message
       this.success = "";   // Reset success message
 
       try {
+        // Step 1: Send login credentials to the backend
         const response = await axios.post("https://blogi-36jo.onrender.com/api/login", {
           username: this.loginData.username,
           password: this.loginData.password,
         });
 
-        this.success = "Login successful!";
-        sessionStorage.setItem("authToken", response.data.token);
-        this.$router.push("/home");  // Redirect to /home after login
+        // Step 2: Store the token in session storage
+        const token = response.data.token;
+        sessionStorage.setItem("authToken", token);
+
+        // Step 3: Validate the token with the backend
+        const validationResponse = await axios.get("https://blogi-36jo.onrender.com/api/verify-token", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        // If token is valid, proceed to home
+        if (validationResponse.data.valid) {
+          this.success = "Login successful!";
+          this.$router.push("/home");  // Redirect to /home after login
+        } else {
+          // If token is invalid, display error
+          this.lerror_1 = "Invalid authentication token.";
+          sessionStorage.removeItem("authToken");  // Remove invalid token
+        }
       } catch (error) {
         this.lerror_1 = error.response?.data?.error || "Login failed!";
       }
@@ -201,10 +207,6 @@ export default {
   },
 };
 </script>
-
-
-
-
 
 <style scoped>
 .bd {

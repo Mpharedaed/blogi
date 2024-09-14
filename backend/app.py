@@ -10,7 +10,7 @@ from celery import Celery
 from celery.schedules import crontab
 from werkzeug.security import generate_password_hash, check_password_hash
 
-# Import API resources (adjusted if necessary)
+# Import API resources
 from api import (
     UsersAPI,
     BlogAPI,
@@ -42,7 +42,7 @@ CORS(app, origins=[
 ])
 
 # MongoDB configuration
-app.config["MONGO_URI"] = "mongodb+srv://mohamedredaed:<red88luck>@blogicluster0.ch75d.mongodb.net/?retryWrites=true&w=majority&appName=blogiCluster0"
+app.config["MONGO_URI"] = os.environ.get("MONGO_URI", "mongodb+srv://mohamedredaed:<red88luck>@cluster.mongodb.net/?retryWrites=true&w=majority")
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY")
 app.config["SECURITY_PASSWORD_SALT"] = os.environ.get("SECURITY_PASSWORD_SALT")
 app.config["SECURITY_USERNAME_ENABLE"] = True
