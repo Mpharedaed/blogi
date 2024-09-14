@@ -1,19 +1,13 @@
 <template>
   <div class="home">
-    <NavBar :username="this.username"></NavBar>
+    <NavBar :username="username"></NavBar>
     <div class="content-area">
       <div class="content">
         <div class="head-nav">
-          <!-- <input type="submit" value="Recent Posts" />
-        <input id="post" type="submit" value="Post-Blog" /> -->
           <a href="#"> Recent Posts </a>
-          <!-- <a href="/user/postBlog"> Post-Blog </a> -->
         </div>
-        <div v-if="this.blogs" class="allposts">
+        <div v-if="blogs" class="allposts">
           <div v-for="blog of blogs" :key="blog.id" class="posts">
-            <!-- <input  type="checkbox" class="chk" aria-hidden="true" />
-        <div class="content">
-        <div class="p"> -->
             <img
               :src="require(`@/assets/blogs/${blog.image}`)"
               alt="Post Image"
@@ -21,54 +15,52 @@
             />
             <div class="post-preview">
               <h1>
-                <span v-html="blog['title']"></span>
+                <span v-html="blog.title"></span>
               </h1>
 
               <div
                 class="info"
                 style="position: absolute; font-size: 1.2rem; top: 85px"
               >
-                <i id="usr" class="far fa-user" @click="usr(blog['user'])">
-                  {{ blog["user"] }}
+                <i id="usr" class="far fa-user" @click="usr(blog.user)">
+                  {{ blog.user }}
                 </i>
-
                 &nbsp;
-                <i id="dt" class="fa fa-calendar"
-                  >{{ blog["date"] }}&nbsp;&nbsp;{{ blog["time"] }}</i
-                >
+                <i id="dt" class="fa fa-calendar">
+                  {{ blog.date }}&nbsp;&nbsp;{{ blog.time }}
+                </i>
               </div>
 
               <p class="preview-text">
-                <span v-html="blog['preview']"></span>
+                <span v-html="blog.preview"></span>
               </p>
               <div class="intr">
-                {{ blog["likes"] }}
-                <i class="fa fa-thumbs-up lk" @click="like(blog['id'])"> </i
-                >&nbsp;&nbsp; {{ blog["dislikes"] }}
-                <i class="fa fa-thumbs-down lk" @click="unlike(blog['id'])">
-                </i>
-                &nbsp;&nbsp;{{ blog["comments"] }}
-                <i class="fa fa-comment cmnt" @click="comment(blog['id'])"></i>
+                {{ blog.likes }}
+                <i class="fa fa-thumbs-up lk" @click="like(blog.id)"></i>
+                &nbsp;&nbsp;
+                {{ blog.dislikes }}
+                <i class="fa fa-thumbs-down lk" @click="unlike(blog.id)"></i>
+                &nbsp;&nbsp;
+                {{ blog.comments }}
+                <i class="fa fa-comment cmnt" @click="comment(blog.id)"></i>
               </div>
 
-              <a href="#" class="btn" @click.prevent="readblog(blog['id'])"
-                >Read More</a
-              >
+              <a href="#" class="btn" @click.prevent="readblog(blog.id)">
+                Read More
+              </a>
             </div>
           </div>
-          <div v-if="!blogs" class="nof">
-            No feeds follow some users to see their Blogs.
-          </div>
         </div>
-        <!-- {% block innercontent %} {% endblock %} -->
+        <div v-else class="nof">
+          No feeds. Follow some users to see their blogs.
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script>
-// @ is an alias to /src
-// import HelloWorld from "@/components/HelloWorld.vue";
+// Import NavBar component
 import NavBar from "@/components/NavBar.vue";
 
 export default {
@@ -79,98 +71,140 @@ export default {
   data() {
     return {
       username: null,
-      // fullname: null,
-      // email: null,
       auth_token: null,
       users: null,
       error: "",
-      sucess: "",
+      success: "",
       blogs: null,
     };
   },
   async created() {
-    this.auth_token = sessionStorage.getItem("auth-token");
+    // Retrieve auth token and username from sessionStorage
+    this.auth_token = sessionStorage.getItem("authToken");
     this.username = sessionStorage.getItem("username");
-    console.log(this.username);
+    console.log("Auth Token:", this.auth_token);
+    console.log("Username:", this.username);
+
+    // Check if auth token is present
     if (!this.auth_token) {
-      alert("Please Login to see your dashboard.");
+      alert("Please log in to see your dashboard.");
+      console.log("No auth token found. Redirecting to login page.");
       this.$router.push("/");
+      return;
     }
-    return fetch("https://blogi-36jo.onrender.com/api/user", {
-      method: "GET",
-      mode: "cors",
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
-        "Authentication-Token": `${this.auth_token}`,
-      },
-    })
-      .then((response) => response.json())
-      .then((data) => {
-        this.blogs = data["blogs"];
-        console.log(data["blogs"]);
-        console.log(this.blogs);
-        console.log(data);
-      })
-      .catch((error) => console.log("1st", error));
+
+    // Fetch blogs from the API
+    console.log("Fetching blogs from API...");
+    try {
+      const response = await fetch("https://blogi-36jo.onrender.com/api/user", {
+        method: "GET",
+        mode: "cors",
+        headers: {
+          "Content-Type": "application/json",
+          "Authentication-Token": `${this.auth_token}`,
+        },
+      });
+
+      console.log("API response status:", response.status);
+
+      if (!response.ok) {
+        console.log("API response not OK:", response.statusText);
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log("Received data from API:", data);
+
+      this.blogs = data.blogs;
+      console.log("Blogs data set:", this.blogs);
+    } catch (error) {
+      console.log("Error fetching blogs:", error);
+      this.error = "Failed to load blogs. Please try again later.";
+    }
   },
   methods: {
-    async usr(user) {
+    usr(user) {
+      console.log("Navigating to user profile:", user);
       this.$router.push(`/profile/${user}`);
     },
-    async comment(bgid) {
-      this.$router.push(`/comment/${bgid}`);
+    comment(blogId) {
+      console.log("Navigating to comments for blog ID:", blogId);
+      this.$router.push(`/comment/${blogId}`);
     },
-    async readblog(bgid) {
-      this.$router.push(`/readblog/${bgid}`);
+    readblog(blogId) {
+      console.log("Navigating to read blog with ID:", blogId);
+      this.$router.push(`/readblog/${blogId}`);
     },
-    async like(blog) {
-      const res = await fetch(`https://blogi-36jo.onrender.com/api/likeunlike`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authentication-Token": `${this.auth_token}`,
-        },
-        body: JSON.stringify({
-          like: true,
-          blog: blog,
-          username: this.currusername,
-          is_authenticated: true,
-        }),
-      });
-      if (res.ok) {
-        console.log("liked");
-        this.$router.go();
-        window.location.reload();
-      } else {
-        console.log("error!!");
+    async like(blogId) {
+      console.log("Liking blog ID:", blogId);
+      try {
+        const res = await fetch(
+          `https://blogi-36jo.onrender.com/api/likeunlike`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authentication-Token": `${this.auth_token}`,
+            },
+            body: JSON.stringify({
+              like: true,
+              blog: blogId,
+              username: this.username,
+              is_authenticated: true,
+            }),
+          }
+        );
+
+        console.log("Like API response status:", res.status);
+
+        if (res.ok) {
+          console.log("Successfully liked blog.");
+          // Reload the current page to update likes
+          window.location.reload();
+        } else {
+          console.log("Error liking blog:", res.statusText);
+        }
+      } catch (error) {
+        console.log("Error in like method:", error);
       }
     },
-    async unlike(blog) {
-      const res = await fetch(`https://blogi-36jo.onrender.com/api/likeunlike`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authentication-Token": `${this.auth_token}`,
-        },
-        body: JSON.stringify({
-          like: false,
-          blog: blog,
-          username: this.currusername,
-          is_authenticated: true,
-        }),
-      });
-      if (res.ok) {
-        this.$router.go();
-        window.location.reload();
-        console.log("unliked");
-      } else {
-        console.log("error!!");
+    async unlike(blogId) {
+      console.log("Unliking blog ID:", blogId);
+      try {
+        const res = await fetch(
+          `https://blogi-36jo.onrender.com/api/likeunlike`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authentication-Token": `${this.auth_token}`,
+            },
+            body: JSON.stringify({
+              like: false,
+              blog: blogId,
+              username: this.username,
+              is_authenticated: true,
+            }),
+          }
+        );
+
+        console.log("Unlike API response status:", res.status);
+
+        if (res.ok) {
+          console.log("Successfully unliked blog.");
+          // Reload the current page to update dislikes
+          window.location.reload();
+        } else {
+          console.log("Error unliking blog:", res.statusText);
+        }
+      } catch (error) {
+        console.log("Error in unlike method:", error);
       }
     },
   },
 };
 </script>
+
 
 <style>
 /* @import url("https://fonts.googleapis.com/css2?family=Rubik+Pixels&display=swap"); */
