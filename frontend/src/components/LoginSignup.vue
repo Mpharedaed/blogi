@@ -15,15 +15,6 @@
           aria-label="Close"
         ></button>
       </p>
-      <p class="alert alert-danger alert-dismissible fade show" v-if="serror_2">
-        {{ serror_2 }}
-        <button
-          type="button"
-          class="btn-close"
-          data-bs-dismiss="alert"
-          aria-label="Close"
-        ></button>
-      </p>
       <p class="alert alert-danger alert-dismissible fade show" v-if="lerror_1">
         {{ lerror_1 }}
         <button
@@ -49,7 +40,7 @@
 
       <!-- SIGNUP PAGE -->
       <div class="signup">
-        <form ref="sigform" method="post">
+        <form ref="sigform" @submit.prevent="signup">
           <label class="lb" for="ck" aria-hidden="true">Sign up</label>
           <input
             class="out"
@@ -82,7 +73,6 @@
           <button
             type="submit"
             class="tk"
-            @click.prevent="signup"
           >
             Sign up
           </button>
@@ -91,7 +81,7 @@
 
       <!-- LOGIN PAGE -->
       <div class="login">
-        <form method="post">
+        <form @submit.prevent="login">
           <label class="lb" for="ck" aria-hidden="true">Login</label>
           <input
             class="out"
@@ -110,7 +100,6 @@
           <button
             type="submit"
             class="tk"
-            @click.prevent="login"
           >
             Login
           </button>
@@ -145,36 +134,61 @@ export default {
   methods: {
     // Signup Function
     async signup() {
-      if (this.signupData.password1 !== this.signupData.password2) {
-        this.serror_1 = "Passwords do not match";
+      this.serror_1 = "";  // Reset error message
+      this.success = "";   // Reset success message
+
+      if (!this.validateEmail(this.signupData.email)) {
+        this.serror_1 = "Invalid email format.";
         return;
       }
+
+      if (this.signupData.password1.length < 6) {
+        this.serror_1 = "Password must be at least 6 characters.";
+        return;
+      }
+
+      if (this.signupData.password1 !== this.signupData.password2) {
+        this.serror_1 = "Passwords do not match.";
+        return;
+      }
+
       try {
-        await axios.post("https://blogi-36jo.onrender.com/api/user", {
+        const response = await axios.post("https://blogi-36jo.onrender.com/api/user", {
           email: this.signupData.email,
           username: this.signupData.username,
           password1: this.signupData.password1,
         });
-        this.success = "Signup successful!";
+
+        this.success = response.data.message || "Signup successful!";
         this.resetForm();
       } catch (error) {
-        this.serror_1 = error.response?.data?.message || "An error occurred!";
+        this.serror_1 = error.response?.data?.error || "An error occurred!";
       }
     },
 
     // Login Function
     async login() {
+      this.lerror_1 = "";  // Reset error message
+      this.success = "";   // Reset success message
+
       try {
         const response = await axios.post("https://blogi-36jo.onrender.com/api/login", {
           username: this.loginData.username,
           password: this.loginData.password,
         });
+
         this.success = "Login successful!";
         sessionStorage.setItem("authToken", response.data.token);
         this.$router.push("/home");  // Redirect to /home after login
       } catch (error) {
-        this.lerror_1 = error.response?.data?.message || "Login failed!";
+        this.lerror_1 = error.response?.data?.error || "Login failed!";
       }
+    },
+
+    // Validate Email Function
+    validateEmail(email) {
+      const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      return re.test(email);
     },
 
     // Reset Form after Signup
@@ -187,6 +201,7 @@ export default {
   },
 };
 </script>
+
 
 
 

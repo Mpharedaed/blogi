@@ -1,30 +1,18 @@
 import os
 from os import path
-from flask import Flask, send_from_directory, request
-from flask_sqlalchemy import SQLAlchemy
-from flask_security import Security, SQLAlchemyUserDatastore
+from flask import Flask, send_from_directory, request, jsonify
+from flask_pymongo import PyMongo
+from flask_security import Security
 from flask_restful import Api, Resource
 from flask_login import LoginManager, login_user
 from flask_cors import CORS
 from celery import Celery
 from celery.schedules import crontab
-
-# Import models (adjusted import statement)
-from models import (
-    db,
-    Users,  # Correct class name here
-    Blogs,
-    Follow,
-    Comments,
-    Likes,
-    Dislikes,
-    Role
-)
+from werkzeug.security import generate_password_hash, check_password_hash
 
 # Import API resources (adjusted if necessary)
 from api import (
     UsersAPI,
-    user_datastore,
     BlogAPI,
     ProfileAPI,
     SearchAPI,
@@ -53,9 +41,8 @@ CORS(app, origins=[
     "https://www.dawlatemad.com"
 ])
 
-# Database and security setup
-cd = path.abspath(path.dirname(__file__))
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///" + path.join(cd, "database.sqlite3")
+# MongoDB configuration
+app.config["MONGO_URI"] = "mongodb+srv://mohamedredaed:<red88luck>@blogicluster0.ch75d.mongodb.net/?retryWrites=true&w=majority&appName=blogiCluster0"
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY")
 app.config["SECURITY_PASSWORD_SALT"] = os.environ.get("SECURITY_PASSWORD_SALT")
 app.config["SECURITY_USERNAME_ENABLE"] = True
@@ -74,14 +61,32 @@ app.config["CACHE_DEFAULT_TIMEOUT"] = 100
 
 # Initialize Flask extensions
 api = Api(app)
-db.init_app(app)
 cache.init_app(app)
+
+# Initialize MongoDB with PyMongo
+mongo = PyMongo(app)
 
 # Initialize Celery
 celery_app = Celery(app.name, broker=app.config["CELERY_BROKER_URL"])
 celery_app.conf.update(app.config)
 
-# Initialize Flask-Security
+# Custom user datastore using PyMongo
+class UserDatastore:
+    def __init__(self, mongo):
+        self.users = mongo.db.users
+        self.roles = mongo.db.roles
+
+    def create_user(self, **kwargs):
+        return self.users.insert_one(kwargs)
+
+    def find_user(self, **kwargs):
+        return self.users.find_one(kwargs)
+
+    def find_role(self, **kwargs):
+        return self.roles.find_one(kwargs)
+
+# Initialize user datastore with PyMongo
+user_datastore = UserDatastore(mongo)
 security = Security(app, user_datastore)
 
 # Define the LoginAPI resource
@@ -91,11 +96,12 @@ class LoginAPI(Resource):
         username = data.get("username")
         password = data.get("password")
 
-        user = Users.query.filter_by(username=username).first()
+        # Query MongoDB to find the user by username
+        user = mongo.db.users.find_one({'username': username})
 
-        if user and user.verify_password(password):
-            login_user(user)
-            token = user.get_auth_token()
+        if user and check_password_hash(user['password'], password):  # Use hashed passwords
+            login_user(user)  # This function remains the same from Flask-Login
+            token = user.get('auth_token', 'some_generated_token')  # Generate or retrieve token
             return {"message": "Login successful", "token": token}, 200
         else:
             return {"message": "Invalid username or password"}, 401
@@ -111,12 +117,6 @@ api.add_resource(UnfollowAPI, "/api/unfollow")
 api.add_resource(LikeUnlikeAPI, "/api/likeunlike")
 api.add_resource(CommentAPI, "/api/comment/<int:id>")
 api.add_resource(ExportblogAPI, "/api/exportblogs")
-
-# Create the database if it doesn't exist
-def create_database():
-    if not path.exists("database.sqlite3"):
-        with app.app_context():
-            db.create_all()
 
 # Serve Vue.js frontend
 @app.route("/")
@@ -144,5 +144,4 @@ def setup_periodic_tasks(sender, **kwargs):
 celery_app.conf.timezone = "Asia/Kolkata"
 
 if __name__ == "__main__":
-    create_database()  # Ensure database creation on startup
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=False)

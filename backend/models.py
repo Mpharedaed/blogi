@@ -1,123 +1,77 @@
-from flask_sqlalchemy import SQLAlchemy
+from flask import current_app
 from flask_security import UserMixin, RoleMixin
 from datetime import datetime
 from flask_security.utils import verify_password
-from flask import current_app
 from itsdangerous import URLSafeTimedSerializer
+from werkzeug.security import generate_password_hash, check_password_hash
+from bson import ObjectId
 
-db = SQLAlchemy()
+class Role:
+    def __init__(self, mongo):
+        self.collection = mongo.db.roles
 
-# Association table for roles and users
-roles_users = db.Table(
-    'roles_users',
-    db.Column('user_id', db.Integer(), db.ForeignKey('users.id')),
-    db.Column('role_id', db.Integer(), db.ForeignKey('role.id'))
-)
+    def create_role(self, name, description=""):
+        """
+        Create a new role.
+        """
+        return self.collection.insert_one({
+            'name': name,
+            'description': description
+        })
 
-class Role(db.Model, RoleMixin):
-    __tablename__ = 'role'
-    id = db.Column(db.Integer(), primary_key=True)
-    name = db.Column(db.String(80), unique=True)
-    description = db.Column(db.String(255))
+    def find_role(self, name):
+        """
+        Find a role by name.
+        """
+        return self.collection.find_one({'name': name})
 
-class Follow(db.Model):
-    __tablename__ = 'follows'
-    follower_id = db.Column(db.Integer, db.ForeignKey('users.id'), primary_key=True)
-    followed_id = db.Column(db.Integer, db.ForeignKey('users.id'), primary_key=True)
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
-class Likes(db.Model):
-    __tablename__ = 'likes'
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), primary_key=True)
-    blog_id = db.Column(db.Integer, db.ForeignKey('blogs.id'), primary_key=True)
+class Users(UserMixin):
+    def __init__(self, mongo):
+        self.collection = mongo.db.users
 
-    # Relationships
-    user = db.relationship('Users', back_populates='likes')
-    blog = db.relationship('Blogs', back_populates='likes')
+    def create_user(self, username, email, password, roles=[]):
+        """
+        Create a new user.
+        """
+        hashed_password = generate_password_hash(password)
+        user = {
+            'username': username,
+            'email': email,
+            'password': hashed_password,
+            'roles': roles,
+            'active': True,
+            'profile_img': "no-profile-pic.jpeg",
+            'fullname': '',
+            'about': '',
+            'fs_uniquifier': str(ObjectId()),
+            'followed': [],
+            'followers': [],
+            'blogs': [],
+            'comments': [],
+            'likes': [],
+            'dislikes': [],
+        }
+        return self.collection.insert_one(user)
 
-class Dislikes(db.Model):
-    __tablename__ = 'dislikes'
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), primary_key=True)
-    blog_id = db.Column(db.Integer, db.ForeignKey('blogs.id'), primary_key=True)
+    def find_user(self, username):
+        """
+        Find a user by username.
+        """
+        return self.collection.find_one({'username': username})
 
-    # Relationships
-    user = db.relationship('Users', back_populates='dislikes')
-    blog = db.relationship('Blogs', back_populates='dislikes')
-
-class Comments(db.Model):
-    __tablename__ = 'comments'
-    id = db.Column(db.Integer, autoincrement=True, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
-    blog_id = db.Column(db.Integer, db.ForeignKey('blogs.id'))
-    comment_time = db.Column(db.DateTime, default=datetime.utcnow)
-    comment = db.Column(db.String)
-
-    # Relationships
-    author = db.relationship('Users', back_populates='comments')
-    blog = db.relationship('Blogs', back_populates='comments')
-
-class Blogs(db.Model):
-    __tablename__ = 'blogs'
-    id = db.Column(db.Integer, autoincrement=True, primary_key=True)
-    blog_title = db.Column(db.String(255), nullable=False)
-    blog_img = db.Column(db.String(255), default="no-img.jpeg")
-    blog_preview = db.Column(db.String)
-    blog_content = db.Column(db.Text)
-    blog_time = db.Column(db.DateTime, default=datetime.utcnow)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
-
-    # Relationships
-    author = db.relationship('Users', back_populates='blogs')
-    comments = db.relationship('Comments', back_populates='blog', lazy='dynamic')
-    likes = db.relationship('Likes', back_populates='blog', lazy='dynamic')
-    dislikes = db.relationship('Dislikes', back_populates='blog', lazy='dynamic')
-
-class Users(db.Model, UserMixin):
-    __tablename__ = 'users'
-    id = db.Column(db.Integer, autoincrement=True, primary_key=True)
-    email = db.Column(db.String(255), unique=True, nullable=False)
-    password = db.Column(db.String(255), nullable=False)
-    username = db.Column(db.String(255), unique=True, nullable=True)
-    profile_img = db.Column(db.String(255), default="no-profile-pic.jpeg")
-    fullname = db.Column(db.String(255), default='')
-    about = db.Column(db.String(255), default='')
-    active = db.Column(db.Boolean())
-    fs_uniquifier = db.Column(db.String(255), unique=True, nullable=False)
-
-    # Relationships
-    roles = db.relationship('Role', secondary=roles_users, backref=db.backref('users', lazy='dynamic'))
-    blogs = db.relationship('Blogs', back_populates='author', lazy='dynamic')
-    comments = db.relationship('Comments', back_populates='author', lazy='dynamic')
-    likes = db.relationship('Likes', back_populates='user', lazy='dynamic')
-    dislikes = db.relationship('Dislikes', back_populates='user', lazy='dynamic')
-    followed = db.relationship(
-        'Follow',
-        foreign_keys='Follow.follower_id',
-        backref=db.backref('followers', lazy='joined'),
-        lazy='dynamic',
-        cascade='all, delete-orphan'
-    )
-    followers = db.relationship(
-        'Follow',
-        foreign_keys='Follow.followed_id',
-        backref=db.backref('followed', lazy='joined'),
-        lazy='dynamic',
-        cascade='all, delete-orphan'
-    )
-
-    # Methods
-    def verify_password(self, password):
+    def verify_password(self, password, stored_password):
         """
         Verify the user's password.
         """
-        return verify_password(password, self.password)
+        return check_password_hash(stored_password, password)
 
-    def get_auth_token(self):
+    def get_auth_token(self, user_id):
         """
         Generate an authentication token.
         """
         s = URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
-        return s.dumps({'id': str(self.id)})
+        return s.dumps({'id': str(user_id)})
 
     @staticmethod
     def verify_auth_token(token):
@@ -129,13 +83,100 @@ class Users(db.Model, UserMixin):
             data = s.loads(token, max_age=current_app.config.get('SECURITY_TOKEN_MAX_AGE', 3600))
         except Exception:
             return None
-        return Users.query.get(data['id'])
+        return data['id']
 
-# Ensure relationships are properly set up
-Comments.author = db.relationship('Users', back_populates='comments')
-Comments.blog = db.relationship('Blogs', back_populates='comments')
-Likes.user = db.relationship('Users', back_populates='likes')
-Likes.blog = db.relationship('Blogs', back_populates='likes')
-Dislikes.user = db.relationship('Users', back_populates='dislikes')
-Dislikes.blog = db.relationship('Blogs', back_populates='dislikes')
-#jnjnjnjnjnjnjnjnjn
+
+class Blogs:
+    def __init__(self, mongo):
+        self.collection = mongo.db.blogs
+
+    def create_blog(self, title, content, author_id, blog_img="no-img.jpeg"):
+        """
+        Create a new blog.
+        """
+        blog = {
+            'title': title,
+            'content': content,
+            'blog_img': blog_img,
+            'author_id': author_id,
+            'timestamp': datetime.utcnow(),
+            'comments': [],
+            'likes': [],
+            'dislikes': []
+        }
+        return self.collection.insert_one(blog)
+
+    def find_blog(self, blog_id):
+        """
+        Find a blog by its ID.
+        """
+        return self.collection.find_one({'_id': ObjectId(blog_id)})
+
+
+class Comments:
+    def __init__(self, mongo):
+        self.collection = mongo.db.comments
+
+    def add_comment(self, user_id, blog_id, comment):
+        """
+        Add a comment to a blog.
+        """
+        comment_data = {
+            'user_id': user_id,
+            'blog_id': blog_id,
+            'comment': comment,
+            'timestamp': datetime.utcnow()
+        }
+        return self.collection.insert_one(comment_data)
+
+
+class Likes:
+    def __init__(self, mongo):
+        self.collection = mongo.db.likes
+
+    def like_blog(self, user_id, blog_id):
+        """
+        Add a like to a blog.
+        """
+        return self.collection.insert_one({'user_id': user_id, 'blog_id': blog_id})
+
+    def unlike_blog(self, user_id, blog_id):
+        """
+        Remove a like from a blog.
+        """
+        return self.collection.delete_one({'user_id': user_id, 'blog_id': blog_id})
+
+
+class Dislikes:
+    def __init__(self, mongo):
+        self.collection = mongo.db.dislikes
+
+    def dislike_blog(self, user_id, blog_id):
+        """
+        Add a dislike to a blog.
+        """
+        return self.collection.insert_one({'user_id': user_id, 'blog_id': blog_id})
+
+    def remove_dislike(self, user_id, blog_id):
+        """
+        Remove a dislike from a blog.
+        """
+        return self.collection.delete_one({'user_id': user_id, 'blog_id': blog_id})
+
+
+class Follow:
+    def __init__(self, mongo):
+        self.collection = mongo.db.follows
+
+    def follow_user(self, follower_id, followed_id):
+        """
+        Follow a user.
+        """
+        return self.collection.insert_one({'follower_id': follower_id, 'followed_id': followed_id})
+
+    def unfollow_user(self, follower_id, followed_id):
+        """
+        Unfollow a user.
+        """
+        return self.collection.delete_one({'follower_id': follower_id, 'followed_id': followed_id})
+
