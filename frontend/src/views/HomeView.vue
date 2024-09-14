@@ -1,15 +1,17 @@
 <template>
   <div class="home">
+    <!-- NavBar component, passing the username as a prop -->
     <NavBar :username="username"></NavBar>
     <div class="content-area">
       <div class="content">
         <div class="head-nav">
           <a href="#"> Recent Posts </a>
         </div>
-        <div v-if="blogs" class="allposts">
-          <div v-for="blog of blogs" :key="blog.id" class="posts">
+        <!-- Display blogs if they are loaded -->
+        <div v-if="blogs && blogs.length" class="allposts">
+          <div v-for="blog in blogs" :key="blog.id" class="posts">
             <img
-              :src="require(`@/assets/blogs/${blog.image}`)"
+              :src="getImageUrl(blog.image)"
               alt="Post Image"
               class="post-image"
             />
@@ -17,11 +19,7 @@
               <h1>
                 <span v-html="blog.title"></span>
               </h1>
-
-              <div
-                class="info"
-                style="position: absolute; font-size: 1.2rem; top: 85px"
-              >
+              <div class="info" style="position: absolute; font-size: 1.2rem; top: 85px">
                 <i id="usr" class="far fa-user" @click="usr(blog.user)">
                   {{ blog.user }}
                 </i>
@@ -30,7 +28,6 @@
                   {{ blog.date }}&nbsp;&nbsp;{{ blog.time }}
                 </i>
               </div>
-
               <p class="preview-text">
                 <span v-html="blog.preview"></span>
               </p>
@@ -44,13 +41,13 @@
                 {{ blog.comments }}
                 <i class="fa fa-comment cmnt" @click="comment(blog.id)"></i>
               </div>
-
               <a href="#" class="btn" @click.prevent="readblog(blog.id)">
                 Read More
               </a>
             </div>
           </div>
         </div>
+        <!-- Message when there are no blogs -->
         <div v-else class="nof">
           No feeds. Follow some users to see their blogs.
         </div>
@@ -62,6 +59,7 @@
 <script>
 // Import NavBar component
 import NavBar from "@/components/NavBar.vue";
+import axios from "axios";
 
 export default {
   name: "HomeView",
@@ -71,22 +69,21 @@ export default {
   data() {
     return {
       username: null,
-      auth_token: null,
-      users: null,
+      authToken: null,
       error: "",
       success: "",
-      blogs: null,
+      blogs: [],
     };
   },
   async created() {
     // Retrieve auth token and username from sessionStorage
-    this.auth_token = sessionStorage.getItem("authToken");
+    this.authToken = sessionStorage.getItem("authToken");
     this.username = sessionStorage.getItem("username");
-    console.log("Auth Token:", this.auth_token);
+    console.log("Auth Token:", this.authToken);
     console.log("Username:", this.username);
 
     // Check if auth token is present
-    if (!this.auth_token) {
+    if (!this.authToken) {
       alert("Please log in to see your dashboard.");
       console.log("No auth token found. Redirecting to login page.");
       this.$router.push("/");
@@ -96,23 +93,20 @@ export default {
     // Fetch blogs from the API
     console.log("Fetching blogs from API...");
     try {
-      const response = await fetch("https://www.dawlatemad.com/api/user", {
-        method: "GET",
-        mode: "cors",
+      const response = await axios.get("https://www.dawlatemad.com/api/blogs", {
         headers: {
-          "Content-Type": "application/json",
-          "Authentication-Token": `${this.auth_token}`,
+          "Authentication-Token": this.authToken,
         },
       });
 
       console.log("API response status:", response.status);
 
-      if (!response.ok) {
+      if (response.status !== 200) {
         console.log("API response not OK:", response.statusText);
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const data = await response.json();
+      const data = response.data;
       console.log("Received data from API:", data);
 
       this.blogs = data.blogs;
@@ -123,6 +117,10 @@ export default {
     }
   },
   methods: {
+    // Get the full URL for the blog image
+    getImageUrl(imageName) {
+      return `https://www.dawlatemad.com/assets/blogs/${imageName}`;
+    },
     usr(user) {
       console.log("Navigating to user profile:", user);
       this.$router.push(`/profile/${user}`);
@@ -138,29 +136,27 @@ export default {
     async like(blogId) {
       console.log("Liking blog ID:", blogId);
       try {
-        const res = await fetch(
+        const res = await axios.post(
           `https://www.dawlatemad.com/api/likeunlike`,
           {
-            method: "POST",
+            like: true,
+            blog: blogId,
+            username: this.username,
+            is_authenticated: true,
+          },
+          {
             headers: {
-              "Content-Type": "application/json",
-              "Authentication-Token": `${this.auth_token}`,
+              "Authentication-Token": this.authToken,
             },
-            body: JSON.stringify({
-              like: true,
-              blog: blogId,
-              username: this.username,
-              is_authenticated: true,
-            }),
           }
         );
 
         console.log("Like API response status:", res.status);
 
-        if (res.ok) {
+        if (res.status === 200) {
           console.log("Successfully liked blog.");
-          // Reload the current page to update likes
-          window.location.reload();
+          // Update the likes count locally or refresh the data
+          this.refreshBlogs();
         } else {
           console.log("Error liking blog:", res.statusText);
         }
@@ -171,34 +167,47 @@ export default {
     async unlike(blogId) {
       console.log("Unliking blog ID:", blogId);
       try {
-        const res = await fetch(
+        const res = await axios.post(
           `https://www.dawlatemad.com/api/likeunlike`,
           {
-            method: "POST",
+            like: false,
+            blog: blogId,
+            username: this.username,
+            is_authenticated: true,
+          },
+          {
             headers: {
-              "Content-Type": "application/json",
-              "Authentication-Token": `${this.auth_token}`,
+              "Authentication-Token": this.authToken,
             },
-            body: JSON.stringify({
-              like: false,
-              blog: blogId,
-              username: this.username,
-              is_authenticated: true,
-            }),
           }
         );
 
         console.log("Unlike API response status:", res.status);
 
-        if (res.ok) {
+        if (res.status === 200) {
           console.log("Successfully unliked blog.");
-          // Reload the current page to update dislikes
-          window.location.reload();
+          // Update the dislikes count locally or refresh the data
+          this.refreshBlogs();
         } else {
           console.log("Error unliking blog:", res.statusText);
         }
       } catch (error) {
         console.log("Error in unlike method:", error);
+      }
+    },
+    async refreshBlogs() {
+      // Fetch the blogs again to update the likes/dislikes counts
+      try {
+        const response = await axios.get("https://www.dawlatemad.com/api/blogs", {
+          headers: {
+            "Authentication-Token": this.authToken,
+          },
+        });
+
+        const data = response.data;
+        this.blogs = data.blogs;
+      } catch (error) {
+        console.log("Error refreshing blogs:", error);
       }
     },
   },
